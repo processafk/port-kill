@@ -1,6 +1,8 @@
 # 🚧 Port Kill
 
-A lighweight macOS status bar app that monitors and manages development processes running on ports 2000-6000. The app provides real-time process detection and allows you to kill individual processes or all processes at once.
+A lightweight macOS status bar app that monitors and manages development processes running on ports 2000-6000. The app provides real-time process detection and allows you to kill individual processes or all processes at once.
+
+![Port Kill Status Bar Icon](image-short.png)
 
 ## Features
 
