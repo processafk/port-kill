@@ -97,12 +97,6 @@ lsof -ti :PORT -sTCP:LISTEN
 
 Monitors ports 2000-6000 (broad range covering common development server ports)
 
-### Icon Design
-
-- Clean white background for subtle appearance
-- Color-coded center area for quick status assessment
-- No borders for modern, minimal aesthetic
-
 ## Dependencies
 
 - `tray-icon`: macOS status bar integration
