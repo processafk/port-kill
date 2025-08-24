@@ -177,7 +177,27 @@ This project is licensed under the FSL-1.1-MIT License. See the LICENSE file for
 
 ## Security Notes
 
+### Process Access
 - The application requires access to process information and termination capabilities
-- Only processes on the specified port range (3000-3020) are monitored
-- Process termination uses standard Unix signals (SIGTERM/SIGKILL)
-- No network communication or data collection is performed
+- Uses `lsof` command to detect processes listening on ports 2000-6000
+- Requires appropriate permissions to send termination signals to processes
+
+### Process Termination
+- Uses standard Unix signals: SIGTERM (graceful) → SIGKILL (force) after 500ms
+- Only terminates processes that are listening on the monitored port range
+- Cannot terminate system processes or processes owned by other users without proper permissions
+
+### Data Privacy
+- **No data collection**: The application does not collect, store, or transmit any data
+- **No network communication**: All operations are local to your machine
+- **No logging of sensitive information**: Only process counts and basic metadata are logged
+
+### Permissions Required
+- **Process monitoring**: Read access to process information via `lsof`
+- **Process termination**: Ability to send signals to processes you own
+- **Status bar access**: Standard macOS status bar permissions
+
+### Limitations
+- Cannot terminate processes owned by other users (requires sudo)
+- Cannot terminate system processes or services
+- Limited to TCP processes in LISTEN state on specified ports
