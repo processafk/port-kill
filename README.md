@@ -1,6 +1,6 @@
-# Port Kill - macOS Development Port Monitor
+# 🚧 Port Kill
 
-A macOS status bar application written in Rust that monitors and manages development processes running on ports 2000-6000. The application provides real-time process detection and allows you to kill individual processes or all processes at once.
+A lighweight macOS status bar app that monitors and manages development processes running on ports 2000-6000. The app provides real-time process detection and allows you to kill individual processes or all processes at once.
 
 ## Features
 
