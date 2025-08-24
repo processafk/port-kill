@@ -19,9 +19,9 @@ A lightweight macOS status bar app that monitors and manages development process
 
 The status bar icon provides instant visual feedback:
 
-- **White background with green center**: 0 processes (safe, no development servers)
-- **White background with red center**: 1-9 processes (some development servers)
-- **White background with orange center**: 10+ processes (many development servers)
+- **Green**: 0 processes (safe, no development servers)
+- **Red**: 1-9 processes (some development servers)
+- **Orange**: 10+ processes (many development servers)
 
 Hover over the icon to see the exact process count in the tooltip.
 
@@ -114,18 +114,6 @@ Monitors ports 2000-6000 (broad range covering common development server ports)
 - `serde`: Data serialization
 
 ## Development
-
-### Project Structure
-
-```
-src/
-├── main.rs          # Application entry point
-├── lib.rs           # Module declarations
-├── app.rs           # Main application logic
-├── process_monitor.rs # Process detection and termination
-├── tray_menu.rs     # Status bar menu management
-└── types.rs         # Data structures
-```
 
 ### Building for Development
 
