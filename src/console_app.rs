@@ -1,6 +1,7 @@
 use crate::{
     process_monitor::ProcessMonitor,
     types::{ProcessUpdate, StatusBarInfo},
+    cli::Args,
 };
 use anyhow::Result;
 use crossbeam_channel::{bounded, Receiver};
@@ -11,26 +12,28 @@ use tokio::sync::Mutex;
 pub struct ConsolePortKillApp {
     process_monitor: Arc<Mutex<ProcessMonitor>>,
     update_receiver: Receiver<ProcessUpdate>,
+    args: Args,
 }
 
 impl ConsolePortKillApp {
-    pub fn new() -> Result<Self> {
+    pub fn new(args: Args) -> Result<Self> {
         // Create channels for communication
         let (update_sender, update_receiver) = bounded(100);
 
-        // Create process monitor
-        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender)?));
+        // Create process monitor with configurable ports
+        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor())?));
 
         Ok(Self {
             process_monitor,
             update_receiver,
+            args,
         })
     }
 
     pub async fn run(mut self) -> Result<()> {
         info!("Starting Console Port Kill application...");
         println!("🚀 Port Kill Console Monitor Started!");
-        println!("📡 Monitoring ports 2000-6000 every 2 seconds...");
+        println!("📡 Monitoring {} every 2 seconds...", self.args.get_port_description());
         println!("💡 Press Ctrl+C to quit");
         println!("");
 

@@ -2,6 +2,7 @@ use crate::{
     process_monitor::ProcessMonitor,
     tray_menu::TrayMenu,
     types::{ProcessUpdate, StatusBarInfo},
+    cli::Args,
 };
 use std::collections::HashMap;
 use anyhow::Result;
@@ -23,16 +24,17 @@ pub struct PortKillApp {
     process_monitor: Arc<Mutex<ProcessMonitor>>,
     update_receiver: Receiver<ProcessUpdate>,
     tray_menu: TrayMenu,
+    args: Args,
 }
 
 impl PortKillApp {
-    pub fn new() -> Result<Self> {
+    pub fn new(args: Args) -> Result<Self> {
         // Create channels for communication
         let (update_sender, update_receiver) = bounded(100);
         let (menu_sender, menu_event_receiver) = bounded(100);
 
-        // Create process monitor
-        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender)?));
+        // Create process monitor with configurable ports
+        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor())?));
 
         // Create tray menu
         let tray_menu = TrayMenu::new(menu_sender)?;
@@ -43,6 +45,7 @@ impl PortKillApp {
             process_monitor,
             update_receiver,
             tray_menu,
+            args,
         })
     }
 
@@ -75,7 +78,7 @@ impl PortKillApp {
 
         // Give the tray icon time to appear
         info!("Waiting for tray icon to appear...");
-        println!("🔍 Look for a bright yellow square with red/green center in your status bar!");
+        println!("🔍 Look for a white square with red/green center in your status bar!");
         println!("   It should be in the top-right area of your screen.");
 
         // Set up menu event handling
@@ -88,11 +91,12 @@ impl PortKillApp {
                 info!("Menu event received: {:?}", event);
                 
                 // Spawn a detached thread to kill processes
-                std::thread::spawn(|| {
+                let ports_to_kill = self.args.get_ports_to_monitor();
+                std::thread::spawn(move || {
                     // Add a small delay to ensure the menu system is stable
                     std::thread::sleep(std::time::Duration::from_millis(100));
                     info!("Starting process killing...");
-                    match PortKillApp::kill_all_processes() {
+                    match PortKillApp::kill_all_processes(&ports_to_kill) {
                         Ok(_) => info!("Process killing completed successfully"),
                         Err(e) => error!("Failed to kill all processes: {}", e),
                     }
@@ -104,7 +108,7 @@ impl PortKillApp {
                 last_check = std::time::Instant::now();
                 
                 // Get detailed process information
-                let (process_count, processes) = Self::get_processes_on_ports();
+                let (process_count, processes) = Self::get_processes_on_ports(&self.args.get_ports_to_monitor());
                 let status_info = StatusBarInfo::from_process_count(process_count);
                 println!("🔄 Port Status: {} - {}", status_info.text, status_info.tooltip);
                 
@@ -152,10 +156,19 @@ impl PortKillApp {
         Ok(())
     }
 
-    fn get_processes_on_ports() -> (usize, HashMap<u16, crate::types::ProcessInfo>) {
+    fn get_processes_on_ports(ports: &[u16]) -> (usize, HashMap<u16, crate::types::ProcessInfo>) {
+        // Build port range string for lsof
+        let port_range = if ports.len() <= 10 {
+            // For small number of ports, list them individually
+            ports.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")
+        } else {
+            // For large ranges, use range format
+            format!("{}-{}", ports.first().unwrap_or(&0), ports.last().unwrap_or(&0))
+        };
+        
         // Use lsof to get detailed process information
         let output = std::process::Command::new("lsof")
-            .args(&["-i", ":2000-6000", "-sTCP:LISTEN", "-P", "-n"])
+            .args(&["-i", &format!(":{}", port_range), "-sTCP:LISTEN", "-P", "-n"])
             .output();
             
         match output {
@@ -186,12 +199,21 @@ impl PortKillApp {
         }
     }
 
-    fn kill_all_processes() -> Result<()> {
-        info!("Killing all processes on ports 2000-6000...");
+    fn kill_all_processes(ports: &[u16]) -> Result<()> {
+        // Build port range string for lsof
+        let port_range = if ports.len() <= 10 {
+            // For small number of ports, list them individually
+            ports.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")
+        } else {
+            // For large ranges, use range format
+            format!("{}-{}", ports.first().unwrap_or(&0), ports.last().unwrap_or(&0))
+        };
+        
+        info!("Killing all processes on ports {}...", port_range);
         
         // Get all PIDs on the monitored ports
         let output = match std::process::Command::new("lsof")
-            .args(&["-ti", ":2000-6000", "-sTCP:LISTEN"])
+            .args(&["-ti", &format!(":{}", port_range), "-sTCP:LISTEN"])
             .output() {
             Ok(output) => output,
             Err(e) => {

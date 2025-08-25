@@ -9,25 +9,34 @@ use std::process::Command;
 use std::time::Duration;
 use tokio::time::sleep;
 
-const PORT_RANGE_START: u16 = 2000;
-const PORT_RANGE_END: u16 = 6000;
 const MONITORING_INTERVAL: Duration = Duration::from_secs(2);
 
 pub struct ProcessMonitor {
     update_sender: Sender<ProcessUpdate>,
     current_processes: HashMap<u16, ProcessInfo>,
+    ports_to_monitor: Vec<u16>,
 }
 
 impl ProcessMonitor {
-    pub fn new(update_sender: Sender<ProcessUpdate>) -> Result<Self> {
+    pub fn new(update_sender: Sender<ProcessUpdate>, ports_to_monitor: Vec<u16>) -> Result<Self> {
         Ok(Self {
             update_sender,
             current_processes: HashMap::new(),
+            ports_to_monitor,
         })
     }
 
     pub async fn start_monitoring(&mut self) -> Result<()> {
-        info!("Starting process monitoring on ports {} to {}", PORT_RANGE_START, PORT_RANGE_END);
+        let port_description = if self.ports_to_monitor.len() <= 10 {
+            format!("ports: {}", self.ports_to_monitor.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", "))
+        } else {
+            format!("{} ports: {} to {}", 
+                self.ports_to_monitor.len(), 
+                self.ports_to_monitor.first().unwrap_or(&0), 
+                self.ports_to_monitor.last().unwrap_or(&0))
+        };
+        
+        info!("Starting process monitoring on {}", port_description);
 
         loop {
             match self.scan_processes().await {
@@ -56,7 +65,7 @@ impl ProcessMonitor {
     async fn scan_processes(&self) -> Result<HashMap<u16, ProcessInfo>> {
         let mut processes = HashMap::new();
 
-        for port in PORT_RANGE_START..=PORT_RANGE_END {
+        for &port in &self.ports_to_monitor {
             if let Ok(process_info) = self.get_process_on_port(port).await {
                 processes.insert(port, process_info);
             }

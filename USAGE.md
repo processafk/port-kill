@@ -12,7 +12,19 @@
    ./run.sh
    ```
 
-3. **Run manually (alternative):**
+3. **Run with custom port configuration:**
+   ```bash
+   # Monitor common dev ports
+   ./run.sh --ports 3000,8000,8080,5000
+   
+   # Monitor port range
+   ./run.sh --start-port 3000 --end-port 8080
+   
+   # Console mode for debugging
+   ./run.sh --console --ports 3000,8000,8080
+   ```
+
+4. **Run manually (alternative):**
    ```bash
    ./target/release/port-kill
    ```
@@ -106,9 +118,12 @@ The application uses a stable event-driven architecture:
 3. **Menu Updates**: Updates context menu every 3 seconds when processes change
 4. **Background Processing**: Process killing runs in separate threads to maintain UI responsiveness
 
-## Port Range
+## Port Configuration
 
-The application monitors ports 2000-6000, which covers a broad range of development ports including:
+The application supports flexible port monitoring with several options:
+
+### Default Configuration
+By default, the application monitors ports 2000-6000, which covers a broad range of development ports including:
 - HTTP development servers (2000-2999)
 - React development servers (3000)
 - Node.js applications (3001, 3002, etc.)
@@ -117,6 +132,35 @@ The application monitors ports 2000-6000, which covers a broad range of developm
 - Django development servers (8000)
 - PHP development servers (8000)
 - Other web development tools and frameworks
+
+### Custom Port Configuration
+You can customize the port monitoring to match your specific development workflow:
+
+#### Port Ranges
+```bash
+# Monitor a specific range
+./run.sh --start-port 3000 --end-port 8080
+
+# Monitor high-numbered ports
+./run.sh -s 8000 -e 9000
+```
+
+#### Specific Ports
+```bash
+# Monitor only the ports you use
+./run.sh --ports 3000,8000,8080,5000
+
+# Monitor React and Node.js dev servers
+./run.sh -p 3000,3001,3002,8000,8080
+```
+
+#### Common Development Ports
+- **3000**: React development server
+- **8000**: Python/Django development server
+- **8080**: Alternative web server port
+- **5000**: Flask development server
+- **3001, 3002**: Additional Node.js/React apps
+- **9000**: Alternative development server port
 
 ## Icon Design
 

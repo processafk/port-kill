@@ -64,13 +64,55 @@ cargo run --release
 
 ## Usage
 
-1. **Start the Application**: Run `./run.sh` to start the application
+### Basic Usage
+1. **Start the Application**: Run `./run.sh` to start the application with default settings (ports 2000-6000)
 2. **Monitor Status**: Check the status bar for the process count indicator
 3. **Access Menu**: Click on the status bar icon to open the context menu
 4. **Kill Processes**: 
    - Click "Kill All Processes" to terminate all development processes
    - Click individual process entries to kill specific processes
 5. **Quit**: Click "Quit" to exit the application
+
+### Configurable Port Monitoring
+
+The application now supports configurable port ranges and specific port monitoring:
+
+#### Port Range Examples
+```bash
+# Monitor ports 3000-8080
+./run.sh --start-port 3000 --end-port 8080
+
+# Monitor ports 8000-9000
+./run.sh -s 8000 -e 9000
+```
+
+#### Specific Ports Examples
+```bash
+# Monitor only specific ports (common dev ports)
+./run.sh --ports 3000,8000,8080,5000
+
+# Monitor React, Node.js, and Python dev servers
+./run.sh -p 3000,3001,8000,8080
+```
+
+#### Console Mode
+```bash
+# Run in console mode for debugging
+./run.sh --console --ports 3000,8000,8080
+
+# Console mode with verbose logging
+./run.sh -c -p 3000,8000,8080 -v
+```
+
+#### All Command-Line Options
+- `--start-port, -s`: Starting port for range scanning (default: 2000)
+- `--end-port, -e`: Ending port for range scanning (default: 6000)
+- `--ports, -p`: Specific ports to monitor (comma-separated, overrides start/end range)
+- `--console, -c`: Run in console mode instead of status bar mode
+- `--verbose, -v`: Enable verbose logging
+- `--help, -h`: Show help information
+- `--version, -V`: Show version information
+
 
 ## Technical Details
 
