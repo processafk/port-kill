@@ -12,6 +12,8 @@
 #   ./run.sh --verbose                 # Enable verbose logging
 #   ./run.sh --docker                  # Enable Docker container monitoring
 #   ./run.sh --docker --ports 3000,3001 # Monitor specific ports with Docker
+#   ./run.sh --show-pid                # Show process IDs in output
+#   ./run.sh --console --show-pid      # Console mode with PIDs shown
 
 echo "🚀 Starting Port Kill..."
 echo "📊 Status bar icon should appear shortly"

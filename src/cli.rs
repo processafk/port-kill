@@ -32,6 +32,10 @@ pub struct Args {
     /// Enable Docker container monitoring (includes containers in process detection)
     #[arg(short, long)]
     pub docker: bool,
+
+    /// Show process IDs (PIDs) in the display output
+    #[arg(short = 'P', long)]
+    pub show_pid: bool,
 }
 
 impl Args {

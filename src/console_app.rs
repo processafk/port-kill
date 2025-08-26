@@ -67,11 +67,14 @@ impl ConsolePortKillApp {
                     println!("📋 Detected Processes:");
                     for (port, process_info) in &update.processes {
                         if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
-                            println!("   • Port {}: {} (PID {}) - {} [Docker: {}]", 
-                                    port, process_info.name, process_info.pid, process_info.command, container_name);
-                        } else {
+                            println!("   • Port {}: {} - {} [Docker: {}]", 
+                                    port, process_info.name, process_info.command, container_name);
+                        } else if self.args.show_pid {
                             println!("   • Port {}: {} (PID {}) - {}", 
                                     port, process_info.name, process_info.pid, process_info.command);
+                        } else {
+                            println!("   • Port {}: {} - {}", 
+                                    port, process_info.name, process_info.command);
                         }
                     }
                     println!("");

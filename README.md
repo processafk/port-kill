@@ -28,7 +28,9 @@ Hover over the icon to see the exact process count in the tooltip.
 ## Menu Options
 
 - **Kill All Processes**: Terminates all detected development processes
-- **Individual Process Entries**: Format: "Kill: Port 3001: node (PID 1234)"
+- **Individual Process Entries**: 
+  - Docker containers: "Kill: Port 3001: node [Docker: my-react-app]"
+  - Regular processes: "Kill: Port 3001: node" (or "Kill: Port 3001: node (PID 1234)" with `--show-pid`)
 - **Quit**: Exits the application
 
 **Note**: Currently, clicking any menu item will kill all processes (for testing purposes).
@@ -107,6 +109,9 @@ The application now supports configurable port ranges and specific port monitori
 
 # Console mode with verbose logging
 ./run.sh -c -p 3000,8000,8080 -v
+
+# Console mode with PIDs shown
+./run.sh --console --show-pid --ports 3000,8000,8080
 ```
 
 #### Docker Integration
@@ -123,7 +128,7 @@ The application now supports configurable port ranges and specific port monitori
 
 **Docker Features:**
 - Detects processes running inside Docker containers
-- Shows container names in the menu and console output
+- Shows container names prominently in the menu and console output (no PID for containers)
 - Automatically stops containers when killing processes
 - Uses `docker stop` for graceful termination, `docker rm -f` as fallback
 
@@ -134,6 +139,7 @@ The application now supports configurable port ranges and specific port monitori
 - `--console, -c`: Run in console mode instead of status bar mode
 - `--verbose, -v`: Enable verbose logging
 - `--docker, -d`: Enable Docker container monitoring (includes containers in process detection)
+- `--show-pid, -P`: Show process IDs (PIDs) in the display output
 - `--help, -h`: Show help information
 - `--version, -V`: Show version information
 

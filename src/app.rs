@@ -11,6 +11,7 @@ use log::{error, info};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::sync::Mutex as StdMutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tray_icon::{
     menu::MenuEvent,
     TrayIcon, TrayIconBuilder,
@@ -75,6 +76,7 @@ impl PortKillApp {
         let mut last_check = std::time::Instant::now();
         let mut last_process_count = 0;
         let mut last_menu_update = std::time::Instant::now();
+        let is_killing_processes = Arc::new(AtomicBool::new(false));
 
         // Give the tray icon time to appear
         info!("Waiting for tray icon to appear...");
@@ -85,20 +87,30 @@ impl PortKillApp {
         let menu_event_receiver = self.menu_event_receiver.clone();
         
         // Run the event loop
-        event_loop.run(move |event, elwt| {
+        event_loop.run(move |_event, _elwt| {
             // Handle menu events (simplified to avoid crashes)
-            if let Ok(event) = menu_event_receiver.try_recv() {
-                info!("Menu event received: {:?}", event);
+            if let Ok(_event) = menu_event_receiver.try_recv() {
+                info!("Menu event received, starting process killing...");
+                is_killing_processes.store(true, Ordering::Relaxed);
                 
                 // Spawn a detached thread to kill processes
                 let ports_to_kill = self.args.get_ports_to_monitor();
+                let is_killing_clone = is_killing_processes.clone();
                 std::thread::spawn(move || {
-                    // Add a small delay to ensure the menu system is stable
-                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    // Add a longer delay to ensure the menu system is stable
+                    std::thread::sleep(std::time::Duration::from_millis(500));
                     info!("Starting process killing...");
                     match PortKillApp::kill_all_processes(&ports_to_kill) {
-                        Ok(_) => info!("Process killing completed successfully"),
-                        Err(e) => error!("Failed to kill all processes: {}", e),
+                        Ok(_) => {
+                            info!("Process killing completed successfully");
+                            // Reset the flag after a delay to allow menu updates again
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            is_killing_clone.store(false, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            error!("Failed to kill all processes: {}", e);
+                            is_killing_clone.store(false, Ordering::Relaxed);
+                        }
                     }
                 });
             }
@@ -117,14 +129,16 @@ impl PortKillApp {
                     println!("📋 Detected Processes:");
                     for (port, process_info) in &processes {
                         if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
-                            println!("   • Port {}: {} (PID {}) [Docker: {}]", port, process_info.name, process_info.pid, container_name);
-                        } else {
+                            println!("   • Port {}: {} [Docker: {}]", port, process_info.name, container_name);
+                        } else if self.args.show_pid {
                             println!("   • Port {}: {} (PID {})", port, process_info.name, process_info.pid);
+                        } else {
+                            println!("   • Port {}: {}", port, process_info.name);
                         }
                     }
                 }
                 
-                // Update tooltip, icon, and menu
+                // Update tooltip, icon, and menu with better error handling
                 if let Ok(tray_icon_guard) = tray_icon.lock() {
                     if let Some(ref icon) = *tray_icon_guard {
                         // Update tooltip
@@ -140,13 +154,29 @@ impl PortKillApp {
                         }
                         
                         // Update menu with current processes (with cooldown to prevent crashes)
-                        if process_count != last_process_count && 
+                        if !is_killing_processes.load(Ordering::Relaxed) && 
+                           process_count != last_process_count && 
                            last_menu_update.elapsed() >= std::time::Duration::from_secs(3) {
                             
                             // Only update menu if we have processes to show
                             if process_count > 0 {
-                                if let Ok(new_menu) = TrayMenu::create_menu(&processes) {
-                                    icon.set_menu(Some(Box::new(new_menu)));
+                                match TrayMenu::create_menu(&processes, self.args.show_pid) {
+                                    Ok(new_menu) => {
+                                        icon.set_menu(Some(Box::new(new_menu)));
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to create menu: {}", e);
+                                    }
+                                }
+                            } else {
+                                // Create empty menu when no processes
+                                match TrayMenu::create_menu(&HashMap::new(), self.args.show_pid) {
+                                    Ok(empty_menu) => {
+                                        icon.set_menu(Some(Box::new(empty_menu)));
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to create empty menu: {}", e);
+                                    }
                                 }
                             }
                             last_process_count = process_count;

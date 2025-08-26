@@ -21,7 +21,7 @@ impl TrayMenu {
         let icon = Self::create_icon("0")?;
 
         // Create initial menu
-        let menu = Self::create_menu(&HashMap::new())?;
+        let menu = Self::create_menu(&HashMap::new(), false)?;
 
         // Set up menu event handling
         let sender_clone = menu_sender.clone();
@@ -40,7 +40,7 @@ impl TrayMenu {
         debug!("Updating menu with {} processes", processes.len());
         
         // Create new menu with current processes
-        let new_menu = Self::create_menu(processes)?;
+        let new_menu = Self::create_menu(processes, false)?;
         self.menu = new_menu;
         
         Ok(())
@@ -55,7 +55,7 @@ impl TrayMenu {
         Ok(())
     }
 
-    pub fn create_menu(processes: &HashMap<u16, ProcessInfo>) -> Result<Menu> {
+    pub fn create_menu(processes: &HashMap<u16, ProcessInfo>, show_pid: bool) -> Result<Menu> {
         let menu = Menu::new();
 
         // Add "Kill All Processes" item
@@ -70,13 +70,18 @@ impl TrayMenu {
         for (port, process_info) in processes {
             let menu_text = if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
                 format!(
-                    "Kill: Port {}: {} (PID {}) [Docker: {}]",
-                    port, process_info.name, process_info.pid, container_name
+                    "Kill: Port {}: {} [Docker: {}]",
+                    port, process_info.name, container_name
                 )
-            } else {
+            } else if show_pid {
                 format!(
                     "Kill: Port {}: {} (PID {})",
                     port, process_info.name, process_info.pid
+                )
+            } else {
+                format!(
+                    "Kill: Port {}: {}",
+                    port, process_info.name
                 )
             };
             let _menu_id = format!("process_{}", process_info.pid);
