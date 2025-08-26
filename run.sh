@@ -10,6 +10,8 @@
 #   ./run.sh --ports 3000,8000,8080    # Specific ports only
 #   ./run.sh --console                 # Run in console mode
 #   ./run.sh --verbose                 # Enable verbose logging
+#   ./run.sh --docker                  # Enable Docker container monitoring
+#   ./run.sh --docker --ports 3000,3001 # Monitor specific ports with Docker
 
 echo "🚀 Starting Port Kill..."
 echo "📊 Status bar icon should appear shortly"

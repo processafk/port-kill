@@ -38,6 +38,7 @@ Hover over the icon to see the exact process count in the tooltip.
 - macOS 10.15 or later
 - Rust 1.70 or later
 - `lsof` command (included with macOS)
+- Docker (optional, for container monitoring)
 
 ## Installation
 
@@ -61,6 +62,10 @@ cargo build --release
 ```bash
 cargo run --release
 ```
+
+Or
+Install with: `brew install rust`
+
 
 ## Usage
 
@@ -104,12 +109,31 @@ The application now supports configurable port ranges and specific port monitori
 ./run.sh -c -p 3000,8000,8080 -v
 ```
 
+#### Docker Integration
+```bash
+# Monitor ports including Docker containers
+./run.sh --docker --ports 3000,3001,8000,8080
+
+# Monitor port range with Docker support
+./run.sh -d -s 3000 -e 8080
+
+# Console mode with Docker monitoring
+./run.sh --console --docker --ports 3000,8000,8080
+```
+
+**Docker Features:**
+- Detects processes running inside Docker containers
+- Shows container names in the menu and console output
+- Automatically stops containers when killing processes
+- Uses `docker stop` for graceful termination, `docker rm -f` as fallback
+
 #### All Command-Line Options
 - `--start-port, -s`: Starting port for range scanning (default: 2000)
 - `--end-port, -e`: Ending port for range scanning (default: 6000)
 - `--ports, -p`: Specific ports to monitor (comma-separated, overrides start/end range)
 - `--console, -c`: Run in console mode instead of status bar mode
 - `--verbose, -v`: Enable verbose logging
+- `--docker, -d`: Enable Docker container monitoring (includes containers in process detection)
 - `--help, -h`: Show help information
 - `--version, -V`: Show version information
 
@@ -188,6 +212,16 @@ If the application fails to start:
 1. Check if another instance is already running
 2. Verify all dependencies are installed
 3. Check system logs for error messages
+
+### Docker Issues
+
+If Docker integration is not working:
+
+1. Ensure Docker Desktop is running
+2. Verify `docker` command is available in PATH
+3. Check Docker permissions and access
+4. Ensure containers are running and accessible
+5. Try running with `--verbose` flag for detailed logging
 
 ## License
 

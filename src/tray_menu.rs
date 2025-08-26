@@ -68,11 +68,18 @@ impl TrayMenu {
 
         // Add individual process items
         for (port, process_info) in processes {
-            let menu_text = format!(
-                "Kill: Port {}: {} (PID {})",
-                port, process_info.name, process_info.pid
-            );
-            let menu_id = format!("process_{}", process_info.pid);
+            let menu_text = if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
+                format!(
+                    "Kill: Port {}: {} (PID {}) [Docker: {}]",
+                    port, process_info.name, process_info.pid, container_name
+                )
+            } else {
+                format!(
+                    "Kill: Port {}: {} (PID {})",
+                    port, process_info.name, process_info.pid
+                )
+            };
+            let _menu_id = format!("process_{}", process_info.pid);
             
             let process_item = MenuItem::new(&menu_text, true, None);
             menu.append(&process_item)?;

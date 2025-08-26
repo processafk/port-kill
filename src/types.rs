@@ -7,6 +7,8 @@ pub struct ProcessInfo {
     pub port: u16,
     pub command: String,
     pub name: String,
+    pub container_id: Option<String>,
+    pub container_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]

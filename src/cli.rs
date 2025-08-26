@@ -28,6 +28,10 @@ pub struct Args {
     /// Enable verbose logging
     #[arg(short, long)]
     pub verbose: bool,
+
+    /// Enable Docker container monitoring (includes containers in process detection)
+    #[arg(short, long)]
+    pub docker: bool,
 }
 
 impl Args {

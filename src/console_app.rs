@@ -21,7 +21,7 @@ impl ConsolePortKillApp {
         let (update_sender, update_receiver) = bounded(100);
 
         // Create process monitor with configurable ports
-        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor())?));
+        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor(), args.docker)?));
 
         Ok(Self {
             process_monitor,
@@ -66,8 +66,13 @@ impl ConsolePortKillApp {
                 if update.count > 0 {
                     println!("📋 Detected Processes:");
                     for (port, process_info) in &update.processes {
-                        println!("   • Port {}: {} (PID {}) - {}", 
-                                port, process_info.name, process_info.pid, process_info.command);
+                        if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
+                            println!("   • Port {}: {} (PID {}) - {} [Docker: {}]", 
+                                    port, process_info.name, process_info.pid, process_info.command, container_name);
+                        } else {
+                            println!("   • Port {}: {} (PID {}) - {}", 
+                                    port, process_info.name, process_info.pid, process_info.command);
+                        }
                     }
                     println!("");
                 }

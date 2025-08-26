@@ -15,14 +15,16 @@ pub struct ProcessMonitor {
     update_sender: Sender<ProcessUpdate>,
     current_processes: HashMap<u16, ProcessInfo>,
     ports_to_monitor: Vec<u16>,
+    docker_enabled: bool,
 }
 
 impl ProcessMonitor {
-    pub fn new(update_sender: Sender<ProcessUpdate>, ports_to_monitor: Vec<u16>) -> Result<Self> {
+    pub fn new(update_sender: Sender<ProcessUpdate>, ports_to_monitor: Vec<u16>, docker_enabled: bool) -> Result<Self> {
         Ok(Self {
             update_sender,
             current_processes: HashMap::new(),
             ports_to_monitor,
+            docker_enabled,
         })
     }
 
@@ -116,16 +118,126 @@ impl ProcessMonitor {
             .unwrap_or("unknown")
             .to_string();
 
+        // Check if this process is running in a Docker container
+        let (container_id, container_name) = if self.docker_enabled {
+            self.get_docker_container_info(pid).await
+        } else {
+            (None, None)
+        };
+
         Ok(ProcessInfo {
             pid,
             port,
             command,
             name,
+            container_id,
+            container_name,
         })
+    }
+
+    async fn get_docker_container_info(&self, pid: i32) -> (Option<String>, Option<String>) {
+        // Try to find the container ID for this PID
+        let container_id = match self.find_container_id_for_pid(pid).await {
+            Ok(id) => id,
+            Err(_) => None,
+        };
+
+        // If we found a container ID, get the container name
+        let container_name = if let Some(ref id) = container_id {
+            match self.get_container_name(id).await {
+                Ok(name) => Some(name),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
+        (container_id, container_name)
+    }
+
+    async fn find_container_id_for_pid(&self, pid: i32) -> Result<Option<String>> {
+        // Use docker ps to get all running containers
+        let output = Command::new("docker")
+            .args(&["ps", "--format", "table {{.ID}}\t{{.Names}}\t{{.Ports}}"])
+            .output()
+            .context("Failed to execute docker ps command")?;
+
+        if !output.status.success() {
+            return Ok(None);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        
+        for line in stdout.lines().skip(1) { // Skip header
+            let parts: Vec<&str> = line.split('\t').collect();
+            if parts.len() >= 3 {
+                let container_id = parts[0].trim();
+                let _ports_str = parts[2].trim();
+                
+                // Check if this container is using the port we're interested in
+                if self.container_has_pid(container_id, pid).await? {
+                    return Ok(Some(container_id.to_string()));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn container_has_pid(&self, container_id: &str, pid: i32) -> Result<bool> {
+        // Use docker top to get processes in the container
+        let output = Command::new("docker")
+            .args(&["top", container_id])
+            .output()
+            .context("Failed to execute docker top command")?;
+
+        if !output.status.success() {
+            return Ok(false);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        
+        // Check if the PID exists in the container's process list
+        for line in stdout.lines().skip(1) { // Skip header
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                if let Ok(container_pid) = parts[1].parse::<i32>() {
+                    if container_pid == pid {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    async fn get_container_name(&self, container_id: &str) -> Result<String> {
+        // Get container name using docker inspect
+        let output = Command::new("docker")
+            .args(&["inspect", "--format", "{{.Name}}", container_id])
+            .output()
+            .context("Failed to execute docker inspect command")?;
+
+        if output.status.success() {
+            let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            // Remove leading slash if present
+            Ok(name.trim_start_matches('/').to_string())
+        } else {
+            Ok(container_id.to_string())
+        }
     }
 
     pub async fn kill_process(&self, pid: i32) -> Result<()> {
         info!("Attempting to kill process {}", pid);
+
+        // Check if this is a Docker container process
+        if self.docker_enabled {
+            if let Some(container_id) = self.find_container_id_for_pid(pid).await? {
+                info!("Process {} is in Docker container {}, stopping container", pid, container_id);
+                return self.stop_docker_container(&container_id).await;
+            }
+        }
 
         // First try SIGTERM
         match kill(Pid::from_raw(pid), Signal::SIGTERM) {
@@ -160,6 +272,36 @@ impl ProcessMonitor {
         }
 
         Ok(())
+    }
+
+    async fn stop_docker_container(&self, container_id: &str) -> Result<()> {
+        info!("Stopping Docker container: {}", container_id);
+
+        // First try graceful stop
+        let stop_output = Command::new("docker")
+            .args(&["stop", container_id])
+            .output()
+            .context("Failed to execute docker stop command")?;
+
+        if stop_output.status.success() {
+            info!("Docker container {} stopped gracefully", container_id);
+            return Ok(());
+        }
+
+        // If graceful stop failed, try force remove
+        info!("Graceful stop failed, force removing container: {}", container_id);
+        let remove_output = Command::new("docker")
+            .args(&["rm", "-f", container_id])
+            .output()
+            .context("Failed to execute docker rm command")?;
+
+        if remove_output.status.success() {
+            info!("Docker container {} force removed", container_id);
+            Ok(())
+        } else {
+            let error_msg = String::from_utf8_lossy(&remove_output.stderr);
+            Err(anyhow::anyhow!("Failed to remove Docker container {}: {}", container_id, error_msg))
+        }
     }
 
     pub async fn kill_all_processes(&self) -> Result<()> {

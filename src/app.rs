@@ -34,7 +34,7 @@ impl PortKillApp {
         let (menu_sender, menu_event_receiver) = bounded(100);
 
         // Create process monitor with configurable ports
-        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor())?));
+        let process_monitor = Arc::new(Mutex::new(ProcessMonitor::new(update_sender, args.get_ports_to_monitor(), args.docker)?));
 
         // Create tray menu
         let tray_menu = TrayMenu::new(menu_sender)?;
@@ -116,7 +116,11 @@ impl PortKillApp {
                 if process_count > 0 {
                     println!("📋 Detected Processes:");
                     for (port, process_info) in &processes {
-                        println!("   • Port {}: {} (PID {})", port, process_info.name, process_info.pid);
+                        if let (Some(_container_id), Some(container_name)) = (&process_info.container_id, &process_info.container_name) {
+                            println!("   • Port {}: {} (PID {}) [Docker: {}]", port, process_info.name, process_info.pid, container_name);
+                        } else {
+                            println!("   • Port {}: {} (PID {})", port, process_info.name, process_info.pid);
+                        }
                     }
                 }
                 
@@ -188,6 +192,8 @@ impl PortKillApp {
                                 port,
                                 command,
                                 name,
+                                container_id: None,
+                                container_name: None,
                             });
                         }
                     }
